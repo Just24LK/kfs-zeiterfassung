@@ -1193,7 +1193,7 @@ const Auth = {
         authority: `https://login.microsoftonline.com/${CONFIG.TENANT_ID}`,
         redirectUri: CONFIG.REDIRECT_URI,
       },
-      cache: { cacheLocation: 'sessionStorage' },
+      cache: { cacheLocation: 'localStorage' },
     });
     await this.msal.initialize();
     const resp = await this.msal.handleRedirectPromise();
@@ -1374,7 +1374,7 @@ const Store = {
     }; });
 
     // Kundenzeiteintraege
-    const kzItems = await Graph.listItems('kundenzeit', azFilter);
+    const kzItems = await Graph.listItems('kundenzeit'); // alle Kunden-Einträge für alle sichtbar
     DB.kundenEintraege = kzItems.map(it => { const x = f(it); return {
       id: 'ke' + it.id, spId: +it.id,
       kundeID: this._localKunde(x.KundeIDLookupId),
@@ -1690,6 +1690,11 @@ function init() {
   renderAzButtons();
   renderKundenList();
   renderNutzerTable();
+  // Konfiguration nur für Admins (Justin/Nicole) sichtbar
+  const meRolle = getMeinNutzer()?.rolle;
+  const istAdminRolle = meRolle === 'Justin' || meRolle === 'Nicole';
+  const konfNavBtn = document.querySelector('nav button:nth-child(3)');
+  if(konfNavBtn && !istAdminRolle) konfNavBtn.style.display = 'none';
   renderKundenKonfig();
   renderMonatLabel();
   renderAuswertung();
@@ -1959,38 +1964,49 @@ function deleteBuchung(buchungId) {
 
 function downloadReport(kundeID, monat) {
   const k = DB.kunden.find(x => x.id === kundeID);
-  const me = getMeinNutzer();
-  if(!k || !me) { alert('Kein Kunde oder Nutzer gefunden.'); return; }
-  const buchungen = DB.kundenEintraege.filter(e => e.kundeID === kundeID && e.monat === monat && e.nutzerID === me.id);
+  if(!k) { alert('Kein Kunde gefunden.'); return; }
+  const buchungen = DB.kundenEintraege.filter(e => e.kundeID === kundeID && e.monat === monat)
+    .sort((a,b)=> new Date(a.startTs)-new Date(b.startTs));
   const totalMs = buchungen.reduce((s,e) => s+(e.istMs||0), 0);
-  const extraMs = Math.max(0, totalMs - k.kontingent * 3600000);
   const parts = monat.split('-');
-  const jahr = parts[0], monatNr = parts[1];
-  const monatName = MONAT_NAMEN[parseInt(monatNr)-1];
-  const NL = '\n';
-  const SEP = ';';
-  let csv = 'KFS Stundennachweis' + SEP + k.name + SEP + monatName + ' ' + jahr + NL;
-  csv += 'Mitarbeiter' + SEP + me.vorname + ' ' + me.nachname + NL;
-  csv += 'Soll' + SEP + k.kontingent + ' h' + SEP + 'Ist' + SEP + fmtMs(totalMs) + NL + NL;
-  csv += 'Datum' + SEP + 'Von' + SEP + 'Bis' + SEP + 'Pause (min)' + SEP + 'Ist-Std' + SEP + 'Taetigkeit' + NL;
-  buchungen.forEach(function(b) {
-    const sd = new Date(b.startTs);
-    const ed = b.endTs ? new Date(b.endTs) : null;
-    const datum = pad(sd.getDate()) + '.' + pad(sd.getMonth()+1) + '.' + sd.getFullYear();
-    const pauseMin = b.pauseMs ? Math.round(b.pauseMs/60000) : 0;
-    const taet = (b.taetigkeit||'').replace(/;/g, ',').replace(/\n/g, ' ');
-    csv += datum + SEP + fmtTime(sd) + SEP + (ed ? fmtTime(ed) : 'offen') + SEP + pauseMin + SEP + fmtMs(b.istMs||0) + SEP + taet + NL;
+  const m = new Date(+parts[0], +parts[1]-1, 1);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = doc.internal.pageSize.getWidth();
+  _pdfHeaderFooter(doc, 'Stundennachweis', 1, 1);
+  let y = 32;
+  doc.setTextColor(...PDF_PRIMARY); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('KUNDE', 14, y); doc.text('ABRECHNUNGSZEITRAUM', W/2, y);
+  y += 6; doc.setFontSize(14); doc.text(k.name, 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+  doc.text(MONAT_NAMEN[m.getMonth()] + ' ' + m.getFullYear(), W/2, y);
+  y += 10;
+  const sollMs = (k.kontingent||0)*3600000;
+  const extraMs = Math.max(0, totalMs - sollMs);
+  doc.setDrawColor(...PDF_PRIMARY); doc.setLineWidth(0.4); doc.rect(14,y,W-28,16);
+  const c3=(W-28)/3;
+  doc.setFontSize(7); doc.setTextColor(110,110,110); doc.setFont('helvetica','normal');
+  doc.text('Soll-Stunden', 18, y+5); doc.text('Ist-Stunden', 18+c3, y+5); doc.text('Zusatzstunden', 18+2*c3, y+5);
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.setTextColor(...PDF_PRIMARY); doc.text(fmtMs(sollMs), 18, y+12);
+  doc.setTextColor(...PDF_SUCCESS); doc.text(fmtMs(totalMs), 18+c3, y+12);
+  doc.setTextColor(...PDF_DANGER); doc.text(extraMs>0?fmtMs(extraMs):'\u2013', 18+2*c3, y+12);
+  y += 24;
+  doc.setTextColor(...PDF_PRIMARY); doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('Leistungsübersicht', 14, y); y += 3;
+  const rows = buchungen.map(e => {
+    const sd=new Date(e.startTs), ed=e.endTs?new Date(e.endTs):null;
+    const nutzer = DB.nutzer.find(n=>n.id===e.nutzerID);
+    const name = nutzer ? nutzer.vorname + ' ' + (nutzer.nachname||'') : '\u2013';
+    return [ name, pad(sd.getDate())+'.'+pad(sd.getMonth()+1)+'.'+sd.getFullYear(),
+             fmtTime(sd), ed?fmtTime(ed):'offen', e.pauseMs>0?fmtMs(e.pauseMs):'\u2013',
+             fmtMs(e.istMs||0), e.taetigkeit||'' ];
   });
-  csv += NL + SEP + SEP + SEP + 'Gesamt' + SEP + fmtMs(totalMs) + NL;
-  if(extraMs > 0) csv += SEP + SEP + SEP + 'Zusatzstunden' + SEP + fmtMs(extraMs) + NL;
-  const bom = '﻿';
-  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'Stundennachweis_' + k.name.replace(/[^a-zA-Z0-9]/g, '_') + '_' + monatNr + jahr + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
+  y = _simpleTable(doc, y, ['Mitarbeiter','Datum','Von','Bis','Pause','Ist-Std.','Tätigkeit'], rows, [28,24,14,14,16,18,68]);
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...PDF_PRIMARY);
+  doc.text('Gesamt: ' + fmtMs(totalMs), W-14, y+6, { align:'right' });
+  const blob = doc.output('blob');
+  _download(blob, 'Stundennachweis_' + k.name.replace(/[^a-zA-Z0-9]/g,'_') + '_' + parts[1] + parts[0] + '.pdf');
 }
 
 
