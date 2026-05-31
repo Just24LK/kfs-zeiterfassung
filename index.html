@@ -1310,6 +1310,7 @@ const Store = {
     if (USE_MOCK) { Mock.load(); return; }
     await Graph.resolveSites();
     await Graph.resolveLists();
+    await ensureSchema();
 
     const f = it => it.fields || {};
     const meEmail = Auth.email().toLowerCase();
@@ -1532,6 +1533,104 @@ function persist(promise, was) {
     console.error('[KFS] Speichern fehlgeschlagen:', was, err);
     showToast('⚠ Konnte nicht in SharePoint speichern: ' + was + '. Bitte erneut versuchen.');
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCHEMA  ·  Spalten-Definitionen für automatische Einrichtung
+// ═══════════════════════════════════════════════════════════════════════════
+const SCHEMA = {
+  nutzer: [
+    { displayName:'Vorname', text:{} },
+    { displayName:'Nachname', text:{} },
+    { displayName:'Email', text:{} },
+    { displayName:'Rolle', choice:{choices:['Mitarbeiter','Justin','Nicole']} },
+    { displayName:'SollStundenProWoche', number:{} },
+    { displayName:'AktivSeit', dateTime:{format:'dateOnly'} },
+    { displayName:'Aktiv', boolean:{} },
+  ],
+  sollHistorie: [
+    { displayName:'NutzerIDLookupId', number:{} },
+    { displayName:'SollStunden', number:{} },
+    { displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
+    { displayName:'GeaendertAm', dateTime:{} },
+    { displayName:'GeaendertVon', text:{} },
+  ],
+  arbeitszeit: [
+    { displayName:'NutzerIDLookupId', number:{} },
+    { displayName:'Datum', dateTime:{format:'dateOnly'} },
+    { displayName:'StartZeit', dateTime:{} },
+    { displayName:'EndZeit', dateTime:{} },
+    { displayName:'IstStunden', number:{} },
+    { displayName:'PauseMinuten', number:{} },
+    { displayName:'Status', choice:{choices:['Normal','Krank','Urlaub','Feiertag']} },
+    { displayName:'ManuellGeaendert', boolean:{} },
+  ],
+  pausen: [
+    { displayName:'ArbeitszeitIDLookupId', number:{} },
+    { displayName:'NutzerIDLookupId', number:{} },
+    { displayName:'PauseStart', dateTime:{} },
+    { displayName:'PauseEnde', dateTime:{} },
+    { displayName:'DauerMinuten', number:{} },
+  ],
+  kunden: [
+    { displayName:'Firmenname', text:{} },
+    { displayName:'KontingentStunden', number:{} },
+    { displayName:'Zuweisung', text:{} },
+    { displayName:'MeldungAktiv', boolean:{} },
+    { displayName:'MeldungSchwelle', number:{} },
+    { displayName:'MeldungEmpfaenger', choice:{choices:['Kunde','Intern','Kunde und Intern']} },
+    { displayName:'Status', choice:{choices:['Aktiv','Beendet']} },
+  ],
+  kontHistorie: [
+    { displayName:'KundeIDLookupId', number:{} },
+    { displayName:'KontingentStunden', number:{} },
+    { displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
+    { displayName:'GeaendertAm', dateTime:{} },
+    { displayName:'GeaendertVon', text:{} },
+  ],
+  kundenzeit: [
+    { displayName:'KundeIDLookupId', number:{} },
+    { displayName:'NutzerIDLookupId', number:{} },
+    { displayName:'Monat', text:{} },
+    { displayName:'StartZeit', dateTime:{} },
+    { displayName:'EndZeit', dateTime:{} },
+    { displayName:'IstStunden', number:{} },
+    { displayName:'PauseMinuten', number:{} },
+    { displayName:'Taetigkeit', text:{allowMultipleLines:true} },
+    { displayName:'ManuellGeaendert', boolean:{} },
+  ],
+  abschluesse: [
+    { displayName:'NutzerIDLookupId', number:{} },
+    { displayName:'Monat', text:{} },
+    { displayName:'AbgeschlossenAm', dateTime:{} },
+    { displayName:'AbgeschlossenVon', text:{} },
+    { displayName:'PDFPfadMitarbeiter', text:{} },
+    { displayName:'PDFPfadKunde', text:{} },
+  ],
+};
+
+
+// Auto-Setup: fehlende Spalten beim Start anlegen
+async function ensureSchema() {
+  if (USE_MOCK) return;
+  for (const key in SCHEMA) {
+    const listId = Graph.listIds[key];
+    if (!listId) continue;
+    let existing;
+    try {
+      const res = await Graph._fetch('GET', `/sites/${Graph.siteId}/lists/${listId}/columns?$select=name,displayName`);
+      existing = new Set(res.value.map(c => c.name).concat(res.value.map(c => c.displayName)));
+    } catch(e) { console.warn('[KFS] Spalten lesen fehlgeschlagen:', key, e); continue; }
+    for (const colDef of SCHEMA[key]) {
+      if (!existing.has(colDef.displayName)) {
+        try {
+          await Graph._fetch('POST', `/sites/${Graph.siteId}/lists/${listId}/columns`, colDef);
+          console.log('[KFS] Spalte erstellt:', CONFIG.LISTS[key] + '.' + colDef.displayName);
+        } catch(e) { console.warn('[KFS] Spalte nicht erstellt:', colDef.displayName, e.message); }
+      }
+    }
+  }
+  console.log('[KFS] Schema-Check abgeschlossen.');
 }
 
 function showToast(msg) {
