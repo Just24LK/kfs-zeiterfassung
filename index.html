@@ -1193,7 +1193,7 @@ const Auth = {
         authority: `https://login.microsoftonline.com/${CONFIG.TENANT_ID}`,
         redirectUri: CONFIG.REDIRECT_URI,
       },
-      cache: { cacheLocation: 'localStorage' },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: true },
     });
     await this.msal.initialize();
     const resp = await this.msal.handleRedirectPromise();
@@ -2667,19 +2667,22 @@ function renderKundenAuswertung() {
 
   wrap.innerHTML = relevanteKunden.map(k => {
     const buchungen = DB.kundenEintraege.filter(e =>
-      e.kundeID === k.id && e.monat === monat && e.nutzerID === me2?.id
+      e.kundeID === k.id && e.monat === monat
     );
     const totalMs = buchungen.reduce((s,e) => s+(e.istMs||0), 0);
     const kontingentMs = (k.kontingent||0) * 3600000;
     const extraMs = Math.max(0, totalMs - kontingentMs);
 
     const rows = buchungen.length === 0
-      ? `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:16px;font-size:12px;">Noch keine Buchungen in diesem Monat</td></tr>`
+      ? `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:16px;font-size:12px;">Noch keine Buchungen in diesem Monat</td></tr>`
       : buchungen.map((b,i) => {
           const sd = new Date(b.startTs), ed = b.endTs ? new Date(b.endTs) : null;
           const datum = `${pad(sd.getDate())}.${pad(sd.getMonth()+1)}.${sd.getFullYear()}`;
           const manuellBadge = b.manuell ? `<span class="status-chip chip-manuell" style="margin-left:4px;"><i class="ti ti-pencil" aria-hidden="true"></i></span>` : '';
+          const _nutzer = DB.nutzer.find(n=>n.id===b.nutzerID);
+          const _name = _nutzer ? _nutzer.vorname + ' ' + (_nutzer.nachname||'').charAt(0) + '.' : '\u2013';
           return `<tr class="${i%2===0?'even-row':''}">
+            <td style="font-size:11px;">${_name}</td>
             <td>${datum}</td>
             <td>${fmtTime(sd)}</td>
             <td>${ed ? fmtTime(ed) : '<span class="status-chip chip-laufend">● Läuft</span>'}</td>
