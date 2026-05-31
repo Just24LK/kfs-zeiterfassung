@@ -1241,7 +1241,7 @@ const Graph = {
 
   async _fetch(method, url, body, raw) {
     const tok = await Auth.token();
-    const opt = { method, headers: { Authorization: 'Bearer ' + tok } };
+    const opt = { method, headers: { Authorization: 'Bearer ' + tok, 'Prefer': 'HonorNonIndexedQueriesWarningMayFailRandomly' } };
     if (body !== undefined) {
       if (raw) { opt.body = body; opt.headers['Content-Type'] = 'application/pdf'; }
       else { opt.body = JSON.stringify(body); opt.headers['Content-Type'] = 'application/json'; }
@@ -1540,72 +1540,72 @@ function persist(promise, was) {
 // ═══════════════════════════════════════════════════════════════════════════
 const SCHEMA = {
   nutzer: [
-    { displayName:'Vorname', text:{} },
-    { displayName:'Nachname', text:{} },
-    { displayName:'Email', text:{} },
-    { displayName:'Rolle', choice:{choices:['Mitarbeiter','Justin','Nicole']} },
-    { displayName:'SollStundenProWoche', number:{} },
-    { displayName:'AktivSeit', dateTime:{format:'dateOnly'} },
-    { displayName:'Aktiv', boolean:{} },
+    { name:'Vorname', displayName:'Vorname', text:{maxLength:255} },
+    { name:'Nachname', displayName:'Nachname', text:{maxLength:255} },
+    { name:'Email', displayName:'Email', text:{maxLength:255} },
+    { name:'Rolle', displayName:'Rolle', choice:{choices:['Mitarbeiter','Justin','Nicole']} },
+    { name:'SollStundenProWoche', displayName:'SollStundenProWoche', number:{} },
+    { name:'AktivSeit', displayName:'AktivSeit', dateTime:{format:'dateOnly'} },
+    { name:'Aktiv', displayName:'Aktiv', boolean:{} },
   ],
   sollHistorie: [
-    { displayName:'NutzerIDLookupId', number:{} },
-    { displayName:'SollStunden', number:{} },
-    { displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
-    { displayName:'GeaendertAm', dateTime:{} },
-    { displayName:'GeaendertVon', text:{} },
+    { name:'NutzerIDLookupId', displayName:'NutzerIDLookupId', number:{} },
+    { name:'SollStunden', displayName:'SollStunden', number:{} },
+    { name:'GueltigAb', displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
+    { name:'GeaendertAm', displayName:'GeaendertAm', dateTime:{} },
+    { name:'GeaendertVon', displayName:'GeaendertVon', text:{maxLength:255} },
   ],
   arbeitszeit: [
-    { displayName:'NutzerIDLookupId', number:{} },
-    { displayName:'Datum', dateTime:{format:'dateOnly'} },
-    { displayName:'StartZeit', dateTime:{} },
-    { displayName:'EndZeit', dateTime:{} },
-    { displayName:'IstStunden', number:{} },
-    { displayName:'PauseMinuten', number:{} },
-    { displayName:'Status', choice:{choices:['Normal','Krank','Urlaub','Feiertag']} },
-    { displayName:'ManuellGeaendert', boolean:{} },
+    { name:'NutzerIDLookupId', displayName:'NutzerIDLookupId', number:{} },
+    { name:'Datum', displayName:'Datum', dateTime:{format:'dateOnly'} },
+    { name:'StartZeit', displayName:'StartZeit', dateTime:{} },
+    { name:'EndZeit', displayName:'EndZeit', dateTime:{} },
+    { name:'IstStunden', displayName:'IstStunden', number:{} },
+    { name:'PauseMinuten', displayName:'PauseMinuten', number:{} },
+    { name:'Status', displayName:'Status', choice:{choices:['Normal','Krank','Urlaub','Feiertag']} },
+    { name:'ManuellGeaendert', displayName:'ManuellGeaendert', boolean:{} },
   ],
   pausen: [
-    { displayName:'ArbeitszeitIDLookupId', number:{} },
-    { displayName:'NutzerIDLookupId', number:{} },
-    { displayName:'PauseStart', dateTime:{} },
-    { displayName:'PauseEnde', dateTime:{} },
-    { displayName:'DauerMinuten', number:{} },
+    { name:'ArbeitszeitIDLookupId', displayName:'ArbeitszeitIDLookupId', number:{} },
+    { name:'NutzerIDLookupId', displayName:'NutzerIDLookupId', number:{} },
+    { name:'PauseStart', displayName:'PauseStart', dateTime:{} },
+    { name:'PauseEnde', displayName:'PauseEnde', dateTime:{} },
+    { name:'DauerMinuten', displayName:'DauerMinuten', number:{} },
   ],
   kunden: [
-    { displayName:'Firmenname', text:{} },
-    { displayName:'KontingentStunden', number:{} },
-    { displayName:'Zuweisung', text:{} },
-    { displayName:'MeldungAktiv', boolean:{} },
-    { displayName:'MeldungSchwelle', number:{} },
-    { displayName:'MeldungEmpfaenger', choice:{choices:['Kunde','Intern','Kunde und Intern']} },
-    { displayName:'Status', choice:{choices:['Aktiv','Beendet']} },
+    { name:'Firmenname', displayName:'Firmenname', text:{maxLength:255} },
+    { name:'KontingentStunden', displayName:'KontingentStunden', number:{} },
+    { name:'Zuweisung', displayName:'Zuweisung', text:{maxLength:255} },
+    { name:'MeldungAktiv', displayName:'MeldungAktiv', boolean:{} },
+    { name:'MeldungSchwelle', displayName:'MeldungSchwelle', number:{} },
+    { name:'MeldungEmpfaenger', displayName:'MeldungEmpfaenger', choice:{choices:['Kunde','Intern','Kunde und Intern']} },
+    { name:'Status', displayName:'Status', choice:{choices:['Aktiv','Beendet']} },
   ],
   kontHistorie: [
-    { displayName:'KundeIDLookupId', number:{} },
-    { displayName:'KontingentStunden', number:{} },
-    { displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
-    { displayName:'GeaendertAm', dateTime:{} },
-    { displayName:'GeaendertVon', text:{} },
+    { name:'KundeIDLookupId', displayName:'KundeIDLookupId', number:{} },
+    { name:'KontingentStunden', displayName:'KontingentStunden', number:{} },
+    { name:'GueltigAb', displayName:'GueltigAb', dateTime:{format:'dateOnly'} },
+    { name:'GeaendertAm', displayName:'GeaendertAm', dateTime:{} },
+    { name:'GeaendertVon', displayName:'GeaendertVon', text:{maxLength:255} },
   ],
   kundenzeit: [
-    { displayName:'KundeIDLookupId', number:{} },
-    { displayName:'NutzerIDLookupId', number:{} },
-    { displayName:'Monat', text:{} },
-    { displayName:'StartZeit', dateTime:{} },
-    { displayName:'EndZeit', dateTime:{} },
-    { displayName:'IstStunden', number:{} },
-    { displayName:'PauseMinuten', number:{} },
-    { displayName:'Taetigkeit', text:{allowMultipleLines:true} },
-    { displayName:'ManuellGeaendert', boolean:{} },
+    { name:'KundeIDLookupId', displayName:'KundeIDLookupId', number:{} },
+    { name:'NutzerIDLookupId', displayName:'NutzerIDLookupId', number:{} },
+    { name:'Monat', displayName:'Monat', text:{maxLength:255} },
+    { name:'StartZeit', displayName:'StartZeit', dateTime:{} },
+    { name:'EndZeit', displayName:'EndZeit', dateTime:{} },
+    { name:'IstStunden', displayName:'IstStunden', number:{} },
+    { name:'PauseMinuten', displayName:'PauseMinuten', number:{} },
+    { name:'Taetigkeit', displayName:'Taetigkeit', text:{maxLength:255,allowMultipleLines:true} },
+    { name:'ManuellGeaendert', displayName:'ManuellGeaendert', boolean:{} },
   ],
   abschluesse: [
-    { displayName:'NutzerIDLookupId', number:{} },
-    { displayName:'Monat', text:{} },
-    { displayName:'AbgeschlossenAm', dateTime:{} },
-    { displayName:'AbgeschlossenVon', text:{} },
-    { displayName:'PDFPfadMitarbeiter', text:{} },
-    { displayName:'PDFPfadKunde', text:{} },
+    { name:'NutzerIDLookupId', displayName:'NutzerIDLookupId', number:{} },
+    { name:'Monat', displayName:'Monat', text:{maxLength:255} },
+    { name:'AbgeschlossenAm', displayName:'AbgeschlossenAm', dateTime:{} },
+    { name:'AbgeschlossenVon', displayName:'AbgeschlossenVon', text:{maxLength:255} },
+    { name:'PDFPfadMitarbeiter', displayName:'PDFPfadMitarbeiter', text:{maxLength:255} },
+    { name:'PDFPfadKunde', displayName:'PDFPfadKunde', text:{maxLength:255} },
   ],
 };
 
@@ -1613,24 +1613,42 @@ const SCHEMA = {
 // Auto-Setup: fehlende Spalten beim Start anlegen
 async function ensureSchema() {
   if (USE_MOCK) return;
+  const statusEl = document.getElementById('auth-status');
+  const log = (msg) => { if(statusEl) statusEl.textContent = msg; console.log('[KFS]', msg); };
+  let created = 0, errors = [];
   for (const key in SCHEMA) {
     const listId = Graph.listIds[key];
-    if (!listId) continue;
+    if (!listId) { errors.push('Liste ' + key + ' nicht gefunden'); continue; }
     let existing;
     try {
-      const res = await Graph._fetch('GET', `/sites/${Graph.siteId}/lists/${listId}/columns?$select=name,displayName`);
+      const res = await Graph._fetch('GET', '/sites/' + Graph.siteId + '/lists/' + listId + '/columns?$select=name,displayName');
       existing = new Set(res.value.map(c => c.name).concat(res.value.map(c => c.displayName)));
-    } catch(e) { console.warn('[KFS] Spalten lesen fehlgeschlagen:', key, e); continue; }
+    } catch(e) { errors.push('Spalten lesen ' + key + ': ' + e.message); continue; }
     for (const colDef of SCHEMA[key]) {
-      if (!existing.has(colDef.displayName)) {
-        try {
-          await Graph._fetch('POST', `/sites/${Graph.siteId}/lists/${listId}/columns`, colDef);
-          console.log('[KFS] Spalte erstellt:', CONFIG.LISTS[key] + '.' + colDef.displayName);
-        } catch(e) { console.warn('[KFS] Spalte nicht erstellt:', colDef.displayName, e.message); }
+      const dn = colDef.displayName;
+      if (existing.has(dn)) continue;
+      log('Erstelle Spalte: ' + CONFIG.LISTS[key] + ' → ' + dn + ' ...');
+      try {
+        const body = JSON.parse(JSON.stringify(colDef)); // deep copy
+        body.name = dn; // name = displayName for simple names
+        await Graph._fetch('POST', '/sites/' + Graph.siteId + '/lists/' + listId + '/columns', body);
+        created++;
+      } catch(e) {
+        const msg = dn + ' in ' + CONFIG.LISTS[key] + ': ' + e.message;
+        errors.push(msg);
+        console.error('[KFS] Spalte nicht erstellt:', msg);
       }
     }
   }
-  console.log('[KFS] Schema-Check abgeschlossen.');
+  if (created > 0) log(created + ' Spalten erstellt.');
+  if (errors.length > 0) {
+    const errMsg = 'Schema-Fehler:\n' + errors.join('\n');
+    console.error(errMsg);
+    if (statusEl) statusEl.textContent = 'Warnung: ' + errors.length + ' Spalte(n) nicht erstellt. Details in Konsole (F12).';
+    // Auch als sichtbaren Hinweis zeigen
+    showToast('⚠ ' + errors.length + ' Spalte(n) konnten nicht angelegt werden. Erster Fehler: ' + errors[0]);
+  }
+  log('Schema-Prüfung abgeschlossen (' + created + ' neu).');
 }
 
 function showToast(msg) {
